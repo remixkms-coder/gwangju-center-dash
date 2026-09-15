@@ -5,64 +5,74 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>광주센터 업무 대시보드</title>
     <style>
-        /* 기존 디자인 유지 */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background-color: #f0f2f5; color: #333; padding-bottom: 70px; }
         header { background-color: #2c3e50; color: white; padding: 15px; text-align: center; font-size: 18px; font-weight: bold; position: sticky; top: 0; z-index: 100; }
-        .notice-banner { background-color: #fff3cd; color: #856404; padding: 12px 15px; font-size: 14px; font-weight: bold; border-bottom: 1px solid #ffe8a1; }
+        .notice-banner { background-color: #fff3cd; color: #856404; padding: 10px 15px; font-size: 13px; font-weight: bold; border-bottom: 1px solid #ffe8a1; }
+        
         .tab-content { display: none; padding: 15px; }
         .tab-content.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .search-box { width: 100%; padding: 10px; border: 2px solid #2c3e50; border-radius: 6px; font-size: 14px; margin-bottom: 15px; }
+        
         .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
         .card-title { font-size: 16px; font-weight: bold; }
-        .list-item { padding: 12px 0; border-bottom: 1px solid #f0f0f0; display: flex; flex-direction: column; gap: 5px; }
+        .list-item { padding: 15px 0; border-bottom: 1px solid #f0f0f0; display: flex; flex-direction: column; gap: 5px; }
+        
         .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: white; }
         .badge.blue { background-color: #3498db; }
         .badge.green { background-color: #2ecc71; }
         .badge.orange { background-color: #f39c12; }
+        .badge.red { background-color: #e74c3c; }
+        .badge.purple { background-color: #8e44ad; } 
+        
         .fab { position: fixed; bottom: 80px; right: 20px; background-color: #e74c3c; color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 10px rgba(231,76,60,0.4); border: none; cursor: pointer; z-index: 100; }
         .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #ddd; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; }
         .nav-item { flex: 1; text-align: center; color: #7f8c8d; font-size: 13px; font-weight: bold; cursor: pointer; padding: 5px; }
         .nav-item.active { color: #2c3e50; border-bottom: 3px solid #2c3e50; }
+        
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: center; }
         .modal-overlay.active { display: flex; }
-        .modal-content { background: white; width: 90%; max-width: 400px; border-radius: 12px; padding: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .modal-content { background: white; width: 90%; max-width: 400px; border-radius: 12px; padding: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
         .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 14px; margin-bottom: 5px; font-weight: bold; color: #555; }
+        .form-group label { display: block; font-size: 13px; margin-bottom: 5px; font-weight: bold; color: #555; }
         .form-control { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-        .btn-submit { width: 100%; padding: 12px; background: #2c3e50; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-submit { width: 100%; padding: 12px; background: #2c3e50; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 5px; }
         .btn-cancel { width: 100%; padding: 12px; background: #ecf0f1; color: #333; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .empty-msg { color: #999; font-size: 13px; text-align: center; padding: 15px 0; }
+        #nameModal { background: #2c3e50; }
+        
+        .btn-delete { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 12px; margin-left: 10px; font-weight: bold; text-decoration: underline; padding: 5px; }
+        .btn-status { background: #333; color: white; border: none; border-radius: 4px; padding: 5px 10px; font-size: 11px; font-weight: bold; cursor: pointer; margin-left: 5px; }
+        .comment-box { background: #f9f9f9; border-radius: 6px; padding: 8px; margin-top: 10px; font-size: 13px; border: 1px solid #eee; }
+        .comment-item { border-bottom: 1px dotted #ccc; padding: 4px 0; }
+        .comment-item:last-child { border-bottom: none; }
+        .comment-input-area { display: flex; gap: 5px; margin-top: 8px; }
+        
+        .dynamic-form { display: none; }
+        .dynamic-form.active { display: block; animation: fadeIn 0.3s; }
     </style>
 </head>
 <body>
     <header>🏢 GN서비스 광주센터</header>
-    <div class="notice-banner">🚨 [공지] 테스트중</div>
+    <div class="notice-banner">🚨 [공지] 오늘 오후 2시 주간회의 / 장비 발주 마감</div>
 
-    <!-- 1. 일정 탭 -->
+    <div style="padding: 15px 15px 0 15px;">
+        <input type="text" id="searchInput" class="search-box" placeholder="🔍 매장명, 담당자, 내용 검색..." onkeyup="renderData()">
+    </div>
+
     <div id="tab-schedule" class="tab-content active">
-        <div class="card">
-            <div class="card-header"><span class="card-title">🗓️ 주간 일정 현황</span></div>
-            <!-- 데이터를 불러와서 그릴 빈 공간 (id 부여) -->
-            <div id="list-schedule"><div class="empty-msg">데이터를 불러오는 중...</div></div>
-        </div>
+        <div class="card"><div class="card-header"><span class="card-title">🗓️ 주간 일정 현황</span></div><div id="list-schedule"></div></div>
     </div>
     
-    <!-- 2. AS 탭 -->
     <div id="tab-as" class="tab-content">
-        <div class="card">
-            <div class="card-header"><span class="card-title">🛠️ 실시간 AS 특이사항</span></div>
-            <div id="list-as"><div class="empty-msg">데이터를 불러오는 중...</div></div>
-        </div>
+        <div class="card"><div class="card-header"><span class="card-title">🛠️ 실시간 AS 특이사항</span></div><div id="list-as"></div></div>
     </div>
 
-    <!-- 3. 업무이관 탭 -->
     <div id="tab-handover" class="tab-content">
-        <div class="card">
-            <div class="card-header"><span class="card-title">🔄 업무 이관 및 건의</span></div>
-            <div id="list-handover"><div class="empty-msg">데이터를 불러오는 중...</div></div>
-        </div>
+        <div class="card"><div class="card-header"><span class="card-title">🔄 업무 이관 및 건의</span></div><div id="list-handover"></div></div>
     </div>
 
     <button class="fab" onclick="openModal()">+</button>
@@ -73,34 +83,100 @@
         <div class="nav-item" onclick="switchTab('tab-handover', this)">🔄 이관/건의</div>
     </nav>
 
-    <div class="modal-overlay" id="inputModal">
-        <div class="modal-content">
-            <h3 style="margin-bottom: 15px; border-bottom: 2px solid #333; padding-bottom: 10px;">데이터 등록</h3>
-            <div class="form-group">
-                <label>구분 선택</label>
-                <select class="form-control" id="formType">
-                    <option value="일정">일정 (연차/병가 등)</option>
-                    <option value="AS">AS 특이사항 공유</option>
-                    <option value="이관">업무 이관 요청</option>
+    <!-- 이름 설정 팝업 -->
+    <div class="modal-overlay" id="nameModal">
+        <div class="modal-content" style="text-align: center;">
+            <h3 style="margin-bottom: 10px;">환영합니다!</h3>
+            <div class="form-group" style="text-align: left;">
+                <select class="form-control" id="managerNameSelect">
+                    <option value="">-- 매니저 선택 --</option>
+                    <option value="김만식">김만식</option><option value="김민준">김민준</option><option value="박지훈">박지훈</option><option value="이서아">이서아</option><option value="정수민">정수민</option><option value="최동훈">최동훈</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label>내용</label>
-                <textarea class="form-control" id="formContent" rows="3" placeholder="내용을 입력하세요"></textarea>
+            <button class="btn-submit" onclick="saveManagerName()">내 이름 저장하고 시작하기</button>
+        </div>
+    </div>
+
+    <!-- 데이터 등록 팝업 폼 -->
+    <div class="modal-overlay" id="inputModal">
+        <div class="modal-content">
+            <h3 id="modalTitle" style="margin-bottom: 15px; border-bottom: 2px solid #333; padding-bottom: 10px;">데이터 등록</h3>
+            
+            <div id="form-schedule" class="dynamic-form">
+                <div class="form-group"><label>📅 날짜 선택</label><input type="date" class="form-control" id="schedDate"></div>
+                <div class="form-group">
+                    <label>분류 선택</label>
+                    <select class="form-control" id="schedType" onchange="toggleSubstitute()">
+                        <option value="연차">연차</option><option value="업무지원">업무지원</option><option value="경조사">경조사</option><option value="병가">병가</option><option value="예비군">예비군</option><option value="기타">기타</option>
+                    </select>
+                </div>
+                <div class="form-group" id="substituteArea">
+                    <label>🤝 대체근무자 지정 (연차 필수)</label>
+                    <select class="form-control" id="schedSubstitute">
+                        <option value="">-- 매니저 선택 --</option>
+                    <option value="김만식">김만식</option>
+                    <option value="김선준">김선준</option>
+                    <option value="이덕섭">이덕섭</option>
+                    <option value="배우경">배우경</option>
+                    <option value="배우길">배우길</option>
+                    <option value="장주원">장주원</option>
+                    <option value="김지석">김지석</option>
+                    <option value="이신엽">이신엽</option>
+                    <option value="이준수">이준수</option>
+                    <option value="구지후">구지후</option>
+                    <option value="정진욱">정진욱</option>
+                    <option value="미정">미정</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>비고</label><textarea class="form-control" id="schedContent" rows="2"></textarea></div>
             </div>
+
+            <div id="form-as" class="dynamic-form">
+                <div class="form-group"><label>🏢 매장명</label><input type="text" class="form-control" id="asStore" placeholder="예: 수완점"></div>
+                <div class="form-group"><label>특이사항 및 조치내역</label><textarea class="form-control" id="asContent" rows="3"></textarea></div>
+            </div>
+
+            <div id="form-handover" class="dynamic-form">
+                <div class="form-group">
+                    <label>구분</label>
+                    <select class="form-control" id="handoverType" onchange="toggleHandoverFields()">
+                        <option value="업무이관">업무 이관 (인수인계)</option>
+                        <option value="건의사항">건의 및 요청사항</option>
+                    </select>
+                </div>
+                <div class="form-group" id="handoverToArea">
+                    <label>👤 인수자 지정 (누구에게 이관할까요?)</label>
+                    <select class="form-control" id="handoverTo">
+                        <option value="">-- 매니저 선택 --</option>
+                        <option value="전체(공통)">전체(공통)</option>
+                    <option value="김만식">김만식</option>
+                    <option value="김선준">김선준</option>
+                    <option value="이덕섭">이덕섭</option>
+                    <option value="배우경">배우경</option>
+                    <option value="배우길">배우길</option>
+                    <option value="장주원">장주원</option>
+                    <option value="김지석">김지석</option>
+                    <option value="이신엽">이신엽</option>
+                    <option value="이준수">이준수</option>
+                    <option value="구지후">구지후</option>
+                    <option value="정진욱">정진욱</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>상세 내용</label><textarea class="form-control" id="handoverContent" rows="3" placeholder="이관할 업무나 건의할 내용을 적어주세요"></textarea></div>
+            </div>
+
             <button class="btn-submit" onclick="saveData()">저장하기</button>
             <button class="btn-cancel" onclick="closeModal()">취소</button>
         </div>
     </div>
 
     <script type="module">
-        // 실시간 레이더(onSnapshot)와 정렬(query, orderBy) 기능을 추가로 불러옵니다.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
-        // ★★★ 메모장에 복사해둔 내 비밀번호로 교체하는 부분 ★★★
+        // ★★★ 내 비밀번호로 교체 ★★★
         const firebaseConfig = {
-  apiKey: "AIzaSyCU6QD7Lb0kKdswB_FwZwPsVSEvHjVkoOc",
+              apiKey: "AIzaSyCU6QD7Lb0kKdswB_FwZwPsVSEvHjVkoOc",
   authDomain: "gwgnworkbord.firebaseapp.com",
   projectId: "gwgnworkbord",
   storageBucket: "gwgnworkbord.firebasestorage.app",
@@ -112,90 +188,261 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        
+        let currentActiveTab = "tab-schedule";
+        let allFetchedData = []; 
 
-        // 탭 및 모달 제어 함수
+        window.onload = function() {
+            const savedName = localStorage.getItem("gnManagerName");
+            if (!savedName) document.getElementById('nameModal').classList.add('active');
+        };
+
+        window.saveManagerName = function() {
+            const selectedName = document.getElementById('managerNameSelect').value;
+            if (selectedName === "") return alert("이름을 선택해 주세요!");
+            localStorage.setItem("gnManagerName", selectedName);
+            document.getElementById('nameModal').classList.remove('active');
+            location.reload();
+        };
+
         window.switchTab = function(tabId, element) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             element.classList.add('active');
+            currentActiveTab = tabId; 
         }
-        window.openModal = function() { document.getElementById('inputModal').classList.add('active'); }
+
+        window.toggleSubstitute = function() {
+            const type = document.getElementById('schedType').value;
+            document.getElementById('substituteArea').style.display = (type === "연차") ? "block" : "none";
+        }
+
+        window.toggleHandoverFields = function() {
+            const type = document.getElementById('handoverType').value;
+            document.getElementById('handoverToArea').style.display = (type === "업무이관") ? "block" : "none";
+        }
+
+        window.openModal = function() { 
+            document.querySelectorAll('.dynamic-form').forEach(form => form.classList.remove('active'));
+            if(currentActiveTab === "tab-schedule") { document.getElementById('modalTitle').innerText = "📅 일정 등록"; document.getElementById('form-schedule').classList.add('active'); window.toggleSubstitute(); }
+            else if(currentActiveTab === "tab-as") { document.getElementById('modalTitle').innerText = "🛠️ AS 내역 등록"; document.getElementById('form-as').classList.add('active'); }
+            else { document.getElementById('modalTitle').innerText = "🔄 이관/건의 등록"; document.getElementById('form-handover').classList.add('active'); window.toggleHandoverFields(); }
+            document.getElementById('inputModal').classList.add('active'); 
+        }
+
         window.closeModal = function() { document.getElementById('inputModal').classList.remove('active'); }
 
-        // 데이터 저장하기 (Create)
         window.saveData = async function() {
-            const type = document.getElementById('formType').value;
-            const content = document.getElementById('formContent').value; 
+            const authorName = localStorage.getItem("gnManagerName") || "익명"; 
+            let savePayload = { author: authorName, createdAt: serverTimestamp(), comments: [] }; 
 
-            if(!content) {
-                alert("내용을 입력해주세요!");
-                return;
+            if(currentActiveTab === "tab-schedule") {
+                const date = document.getElementById('schedDate').value;
+                const type = document.getElementById('schedType').value;
+                const sub = document.getElementById('schedSubstitute').value;
+                const content = document.getElementById('schedContent').value;
+                if(!date) return alert("날짜를 선택해주세요.");
+                if(type === "연차" && !sub) return alert("대체근무자를 지정해야 합니다.");
+                savePayload.category = "일정"; savePayload.schedDate = date; savePayload.schedType = type; savePayload.schedSubstitute = sub; savePayload.text = content;
+            } 
+            else if(currentActiveTab === "tab-as") {
+                const store = document.getElementById('asStore').value;
+                const content = document.getElementById('asContent').value;
+                if(!store || !content) return alert("입력칸을 모두 채워주세요.");
+                savePayload.category = "AS"; savePayload.storeName = store; savePayload.text = content; savePayload.status = "미해결";
+            } 
+            else {
+                const type = document.getElementById('handoverType').value;
+                const content = document.getElementById('handoverContent').value;
+                const target = document.getElementById('handoverTo').value;
+                
+                if(!content) return alert("내용을 입력해주세요.");
+                if(type === "업무이관" && !target) return alert("누구에게 이관할지 인수자를 지정해주세요.");
+                
+                savePayload.category = "이관"; 
+                savePayload.handoverType = type; 
+                savePayload.text = content;
+                
+                if(type === "업무이관") {
+                    savePayload.assignee = target; 
+                    savePayload.handoverStatus = "대기중"; 
+                }
             }
 
             try {
-                await addDoc(collection(db, "gn_dashboard_data"), {
-                    category: type,
-                    text: content,
-                    createdAt: serverTimestamp()
-                });
-                alert("성공적으로 등록되었습니다!");
-                document.getElementById('formContent').value = ''; 
+                await addDoc(collection(db, "gn_dashboard_data"), savePayload);
+                document.getElementById('schedDate').value = ''; document.getElementById('schedContent').value = ''; document.getElementById('asStore').value = ''; document.getElementById('asContent').value = ''; document.getElementById('handoverContent').value = ''; document.getElementById('handoverTo').value = '';
                 window.closeModal(); 
-            } catch (e) {
-                alert("저장 실패! 설정값을 다시 확인해주세요.");
-                console.error(e);
+            } catch (e) { alert("저장 실패!"); }
+        };
+
+        window.deleteData = async function(docId) {
+            if(confirm("정말로 삭제하시겠습니까?")) await deleteDoc(doc(db, "gn_dashboard_data", docId));
+        };
+
+        window.toggleStatus = async function(docId, currentStatus) {
+            const newStatus = (currentStatus === "미해결") ? "해결완료" : "미해결";
+            if(confirm(`상태를 '${newStatus}'(으)로 변경하시겠습니까?`)) {
+                await updateDoc(doc(db, "gn_dashboard_data", docId), { status: newStatus });
             }
         };
 
-        // 실시간으로 데이터 불러오기 (Read) - 작성일 기준 내림차순(최신순) 정렬
+        window.submitHandoverResult = async function(docId) {
+            const material = document.getElementById(`mat-${docId}`).value;
+            const memo = document.getElementById(`memo-${docId}`).value;
+            
+            if(confirm("완료 처리하시겠습니까? (저장 후 수정이 불가능합니다)")) {
+                try {
+                    await updateDoc(doc(db, "gn_dashboard_data", docId), {
+                        handoverStatus: "해결완료",
+                        usedMaterial: material || "사용 자재 없음",
+                        resolutionMemo: memo || "특이사항 없음"
+                    });
+                    alert("업무 이관 완료 처리가 되었습니다.");
+                } catch(e) { alert("처리 중 오류가 발생했습니다."); }
+            }
+        };
+
+        window.addComment = async function(docId) {
+            const commentInput = document.getElementById(`cmt-${docId}`);
+            if(!commentInput.value) return alert("댓글을 입력해주세요.");
+            const authorName = localStorage.getItem("gnManagerName") || "익명"; 
+            try {
+                await updateDoc(doc(db, "gn_dashboard_data", docId), {
+                    comments: arrayUnion({ author: authorName, text: commentInput.value })
+                });
+                commentInput.value = ''; 
+            } catch (e) { alert("댓글 등록 실패!"); }
+        };
+
         const q = query(collection(db, "gn_dashboard_data"), orderBy("createdAt", "desc"));
-        
         onSnapshot(q, (snapshot) => {
-            // 1. 화면의 빈 공간(리스트)을 먼저 깨끗하게 지웁니다.
+            allFetchedData = []; 
+            snapshot.forEach((doc) => { allFetchedData.push({ id: doc.id, ...doc.data() }); });
+            renderData(); 
+        });
+
+        window.renderData = function() {
             const listSchedule = document.getElementById('list-schedule');
             const listAs = document.getElementById('list-as');
             const listHandover = document.getElementById('list-handover');
             
-            listSchedule.innerHTML = '';
-            listAs.innerHTML = '';
-            listHandover.innerHTML = '';
+            listSchedule.innerHTML = ''; listAs.innerHTML = ''; listHandover.innerHTML = '';
+            
+            const currentMyName = localStorage.getItem("gnManagerName");
+            const searchKeyword = document.getElementById('searchInput').value.toLowerCase(); 
 
-            // 2. 만약 데이터가 하나도 없다면 안내 문구를 띄웁니다.
-            if(snapshot.empty) {
-                listSchedule.innerHTML = '<div class="empty-msg">등록된 일정이 없습니다.</div>';
-                listAs.innerHTML = '<div class="empty-msg">등록된 AS 내역이 없습니다.</div>';
-                listHandover.innerHTML = '<div class="empty-msg">등록된 이관/건의가 없습니다.</div>';
-                return;
-            }
+            allFetchedData.forEach((data) => {
+                const textToSearch = `${data.author} ${data.assignee || ''} ${data.storeName || ''} ${data.text} ${data.schedType || ''}`.toLowerCase();
+                if(searchKeyword && !textToSearch.includes(searchKeyword)) return; 
 
-            // 3. 구글 공책에 적힌 글들을 하나씩 꺼내서 화면에 그립니다.
-            snapshot.forEach((doc) => {
-                const data = doc.data();
+                const docId = data.id; 
+                let deleteBtnHTML = (data.author === currentMyName) ? `<button class="btn-delete" onclick="deleteData('${docId}')">삭제</button>` : "";
                 
-                // 배지 색상 결정 (구분에 따라 색상을 다르게)
-                let badgeColor = "blue";
-                if(data.category === "AS") badgeColor = "green";
-                if(data.category === "이관") badgeColor = "orange";
+                let commentsHTML = "";
+                if(data.comments && data.comments.length > 0) {
+                    data.comments.forEach(c => { commentsHTML += `<div class="comment-item"><strong>${c.author}</strong>: ${c.text}</div>`; });
+                }
+                const commentBoxHTML = `
+                    <div class="comment-box">
+                        ${commentsHTML}
+                        <div class="comment-input-area">
+                            <input type="text" id="cmt-${docId}" class="form-control" style="padding: 6px; font-size: 12px;" placeholder="의견 남기기...">
+                            <button class="btn-submit" style="width: 50px; margin: 0; padding: 6px;" onclick="addComment('${docId}')">등록</button>
+                        </div>
+                    </div>`;
 
-                // HTML로 카드 모양 만들기
-                const itemHTML = `
-                    <div class="list-item">
-                        <div><span class="badge ${badgeColor}">${data.category}</span></div>
-                        <div style="font-size: 14px; color: #333; margin-top: 5px;">${data.text}</div>
-                    </div>
-                `;
-
-                // 카테고리(구분)에 맞춰서 알맞은 탭에 밀어 넣기
                 if(data.category === "일정") {
-                    listSchedule.innerHTML += itemHTML;
-                } else if(data.category === "AS") {
-                    listAs.innerHTML += itemHTML;
-                } else {
-                    listHandover.innerHTML += itemHTML;
+                    let subInfo = (data.schedType === "연차") ? `<br><span style="color:#d35400; font-weight:bold;">↳ 대체근무: ${data.schedSubstitute} 매니저</span>` : "";
+                    let memo = data.text ? `<div style="font-size: 13px; color: #555; margin-top: 5px;">${data.text}</div>` : "";
+                    listSchedule.innerHTML += `
+                        <div class="list-item">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div><span class="badge blue">${data.schedType}</span> <span style="font-weight:bold; font-size:14px; margin-left:5px;">📅 ${data.schedDate}</span></div>
+                                <div><span style="font-size: 12px; color: #888;">👤 ${data.author}</span> ${deleteBtnHTML}</div>
+                            </div>
+                            <div style="font-size: 14px; color: #333; margin-top: 5px;">${data.author} 매니저 ${data.schedType} ${subInfo}</div>
+                            ${memo}
+                        </div>`;
+                } 
+                else if(data.category === "AS") {
+                    let statusBadge = (data.status === "해결완료") ? `<span class="badge green">해결완료</span>` : `<span class="badge red">미해결</span>`;
+                    let statusBtn = `<button class="btn-status" onclick="toggleStatus('${docId}', '${data.status || '미해결'}')">상태변경</button>`;
+                    listAs.innerHTML += `
+                        <div class="list-item">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>${statusBadge} <span style="font-weight:bold; font-size:14px; margin-left:5px;">🏢 ${data.storeName}</span> ${statusBtn}</div>
+                                <div><span style="font-size: 12px; color: #888;">👤 ${data.author}</span> ${deleteBtnHTML}</div>
+                            </div>
+                            <div style="font-size: 14px; color: #333; margin-top: 5px;">${data.text}</div>
+                            ${commentBoxHTML}
+                        </div>`;
+                } 
+                else {
+                    if(data.handoverType === "업무이관") {
+                        let statusBadge = (data.handoverStatus === "해결완료") ? `<span class="badge green">해결완료</span>` : `<span class="badge red">대기중</span>`;
+                        let resolveArea = "";
+
+                        if(data.handoverStatus === "해결완료") {
+                            resolveArea = `
+                                <div style="background:#e8f8f5; padding:10px; border-radius:6px; margin-top:10px; font-size:13px; border-left:3px solid #2ecc71;">
+                                    <strong style="color:#27ae60;">✅ 조치 완료 내역</strong><br>
+                                    <span style="color:#555;">- 사용 자재:</span> ${data.usedMaterial}<br>
+                                    <span style="color:#555;">- 전달 사항:</span> ${data.resolutionMemo}
+                                </div>
+                            `;
+                        } else {
+                            resolveArea = `
+                                <div style="text-align: right; margin-top: 5px;">
+                                    <button class="btn-status" style="background:#2980b9;" onclick="document.getElementById('resolve-${docId}').style.display='block'">+ 처리결과 등록</button>
+                                </div>
+                                <div id="resolve-${docId}" style="display:none; background:#ecf0f1; padding:10px; border-radius:6px; margin-top:10px;">
+                                    <label style="font-size:12px; font-weight:bold; color:#333;">🛠️ 사용 자재 입력</label>
+                                    <input type="text" id="mat-${docId}" class="form-control" placeholder="예: 램프 1개, 케이블 교체 (없으면 빈칸)" style="margin-bottom:8px; padding:8px; font-size:13px;">
+                                    
+                                    <label style="font-size:12px; font-weight:bold; color:#333;">📝 기타 전달/조치사항</label>
+                                    <input type="text" id="memo-${docId}" class="form-control" placeholder="조치 결과나 특이사항 입력" style="margin-bottom:8px; padding:8px; font-size:13px;">
+                                    
+                                    <div style="text-align:right;">
+                                        <button onclick="document.getElementById('resolve-${docId}').style.display='none'" style="border:none; background:none; font-size:12px; color:#555; cursor:pointer; margin-right:10px;">취소</button>
+                                        <button onclick="submitHandoverResult('${docId}')" class="btn-submit" style="width:auto; padding:6px 12px; font-size:13px; margin:0;">완료 저장</button>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        listHandover.innerHTML += `
+                            <div class="list-item">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div><span class="badge purple">업무이관</span> ${statusBadge}</div>
+                                    <div><span style="font-size: 12px; color: #888;">👤 ${data.author}</span> ${deleteBtnHTML}</div>
+                                </div>
+                                <div style="font-size: 13px; font-weight: bold; color: #8e44ad; margin-top: 8px; padding:5px; background:#f9ebff; border-radius:4px; display:inline-block;">
+                                    전달: ${data.author} ➔ 인수: ${data.assignee}
+                                </div>
+                                <div style="font-size: 14px; color: #333; margin-top: 8px;">${data.text}</div>
+                                ${resolveArea}
+                                ${commentBoxHTML}
+                            </div>`;
+                    } else {
+                        listHandover.innerHTML += `
+                            <div class="list-item">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span class="badge orange" style="font-size:13px; padding:4px 10px;">💡 건의사항</span>
+                                    <div><span style="font-size: 12px; color: #888;">👤 ${data.author}</span> ${deleteBtnHTML}</div>
+                                </div>
+                                <div style="font-size: 14px; color: #333; margin-top: 8px; font-weight:bold;">${data.text}</div>
+                                ${commentBoxHTML}
+                            </div>`;
+                    }
                 }
             });
-        });
+
+            if(listSchedule.innerHTML === '') listSchedule.innerHTML = '<div class="empty-msg">내용이 없습니다.</div>';
+            if(listAs.innerHTML === '') listAs.innerHTML = '<div class="empty-msg">내용이 없습니다.</div>';
+            if(listHandover.innerHTML === '') listHandover.innerHTML = '<div class="empty-msg">내용이 없습니다.</div>';
+        }
     </script>
 </body>
 </html>
