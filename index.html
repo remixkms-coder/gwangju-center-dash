@@ -57,14 +57,14 @@
 </head>
 <body>
     <header>🏢 GN서비스 광주센터</header>
-    <div class="notice-banner">🚨 [공지] 오늘 오후 2시 주간회의 / 장비 발주 마감</div>
+    <div class="notice-banner">🚨 [공지] 연차사용,당일미처리업무이관,난제성AS 반드시 대시보에 공유할것!</div>
 
     <div style="padding: 15px 15px 0 15px;">
         <input type="text" id="searchInput" class="search-box" placeholder="🔍 매장명, 담당자, 내용 검색..." onkeyup="renderData()">
     </div>
 
     <div id="tab-schedule" class="tab-content active">
-        <div class="card"><div class="card-header"><span class="card-title">🗓️ 주간 일정 현황</span></div><div id="list-schedule"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">🗓️ 일정 현황</span></div><div id="list-schedule"></div></div>
     </div>
     
     <div id="tab-as" class="tab-content">
@@ -72,7 +72,7 @@
     </div>
 
     <div id="tab-handover" class="tab-content">
-        <div class="card"><div class="card-header"><span class="card-title">🔄 업무 이관 및 건의</span></div><div id="list-handover"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">🔄 AS업무 이관 및 건의</span></div><div id="list-handover"></div></div>
     </div>
 
     <button class="fab" onclick="openModal()">+</button>
@@ -80,7 +80,7 @@
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('tab-schedule', this)">🗓️ 일정</div>
         <div class="nav-item" onclick="switchTab('tab-as', this)">🛠️ AS공유</div>
-        <div class="nav-item" onclick="switchTab('tab-handover', this)">🔄 이관/건의</div>
+        <div class="nav-item" onclick="switchTab('tab-handover', this)">🔄 AS이관/건의</div>
     </nav>
 
     <!-- 이름 설정 팝업 -->
@@ -90,7 +90,17 @@
             <div class="form-group" style="text-align: left;">
                 <select class="form-control" id="managerNameSelect">
                     <option value="">-- 매니저 선택 --</option>
-                    <option value="김만식">김만식</option><option value="김민준">김민준</option><option value="박지훈">박지훈</option><option value="이서아">이서아</option><option value="정수민">정수민</option><option value="최동훈">최동훈</option>
+                    <option value="김만식">김만식</option>
+                    <option value="김선준">김선준</option>
+                    <option value="이덕섭">이덕섭</option>
+                    <option value="배우경">배우경</option>
+                    <option value="배우길">배우길</option>
+                    <option value="장주원">장주원</option>
+                    <option value="김지석">김지석</option>
+                    <option value="이신엽">이신엽</option>
+                    <option value="이준수">이준수</option>
+                    <option value="구지후">구지후</option>
+                    <option value="정진욱">정진욱</option>
                 </select>
             </div>
             <button class="btn-submit" onclick="saveManagerName()">내 이름 저장하고 시작하기</button>
