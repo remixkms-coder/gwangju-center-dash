@@ -8,6 +8,7 @@
     <!-- Firebase SDK (글로벌 버전) -->
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging-compat.js"></script>
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -15,7 +16,9 @@
         header { background-color: #2c3e50; color: white; padding: 15px; text-align: center; font-size: 18px; font-weight: bold; position: sticky; top: 0; z-index: 100; }
         .notice-banner { background-color: #fff3cd; color: #856404; padding: 10px 15px; font-size: 13px; font-weight: bold; border-bottom: 1px solid #ffe8a1; }
         
-        /* 🔔 토스트 알림 메시지 스타일 */
+        /* 🔔 푸시 알림 허용 안내 바 */
+        .push-banner { background-color: #e74c3c; color: white; padding: 8px 15px; font-size: 12px; font-weight: bold; text-align: center; cursor: pointer; display: none; }
+
         .toast-notification {
             position: fixed;
             top: 20px;
@@ -33,17 +36,13 @@
             transition: all 0.4s ease;
             text-align: center;
         }
-        .toast-notification.show {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
-        }
+        .toast-notification.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
         .tab-content { display: none; padding: 15px; }
         .tab-content.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
         .search-box { width: 100%; padding: 10px; border: 2px solid #2c3e50; border-radius: 6px; font-size: 14px; margin-bottom: 15px; }
-        
         .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
         .card-title { font-size: 16px; font-weight: bold; }
@@ -91,17 +90,16 @@
     </style>
 </head>
 <body>
-    <!-- 🔔 토스트 알림 메시지 UI -->
     <div id="toastNotification" class="toast-notification">✅ 게시글이 성공적으로 등록되었습니다!</div>
 
     <header>🏢 GN서비스 광주센터</header>
+    <div id="pushBanner" class="push-banner" onclick="requestPushPermission()">📲 [클릭] 카카오톡처럼 실시간 알림을 받으려면 동의해주세요!</div>
     <div class="notice-banner">🚨 [공지] 접수 후 동일증상 3일 이상 지속되는 난제성 AS는 반드시 등록하여 집중 조치받으세요!</div>
 
     <div style="padding: 15px 15px 0 15px;">
         <input type="text" id="searchInput" class="search-box" placeholder="🔍 매장명, 담당자, 내용 검색..." onkeyup="renderData()">
     </div>
 
-    <!-- 탭 별 컨텐츠 영역 -->
     <div id="tab-schedule" class="tab-content active">
         <div class="card"><div class="card-header"><span class="card-title">🗓️ 일정 현황</span></div><div id="list-schedule"></div></div>
     </div>
@@ -114,14 +112,12 @@
         <div class="card"><div class="card-header"><span class="card-title">🔄 AS업무 이관 및 건의</span></div><div id="list-handover"></div></div>
     </div>
 
-    <!-- 📋 신규 추가: 업무지시 탭 -->
     <div id="tab-task" class="tab-content">
         <div class="card"><div class="card-header"><span class="card-title">📋 센터 업무지시 및 전달사항</span></div><div id="list-task"></div></div>
     </div>
 
     <button class="fab" onclick="openModal()">+</button>
 
-    <!-- 하단 네비게이션 바 (4개 탭) -->
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('tab-schedule', this)">🗓️ 일정</div>
         <div class="nav-item" onclick="switchTab('tab-as', this)">🛠️ AS공유</div>
@@ -164,7 +160,6 @@
         <div class="modal-content">
             <h3 id="modalTitle" style="margin-bottom: 15px; border-bottom: 2px solid #333; padding-bottom: 10px;">데이터 등록</h3>
             
-            <!-- 일정 폼 -->
             <div id="form-schedule" class="dynamic-form">
                 <div class="form-group"><label>📅 날짜 선택</label><input type="date" class="form-control" id="schedDate"></div>
                 <div class="form-group">
@@ -183,7 +178,6 @@
                 <div class="form-group"><label>비고</label><textarea class="form-control" id="schedContent" rows="2"></textarea></div>
             </div>
 
-            <!-- AS 폼 -->
             <div id="form-as" class="dynamic-form">
                 <div class="guide-box">
                     📌 <strong>난제성 AS 작성 안내</strong><br>
@@ -194,7 +188,6 @@
                 <div class="form-group"><label>증상 및 조치 내역 (미해결 사유)</label><textarea class="form-control" id="asContent" rows="3" placeholder="어떤 원인으로 조치가 지연되고 있는지 구체적으로 적어주세요"></textarea></div>
             </div>
 
-            <!-- 이관/건의 폼 -->
             <div id="form-handover" class="dynamic-form">
                 <div class="form-group">
                     <label>구분</label>
@@ -214,7 +207,6 @@
                 <div class="form-group"><label>상세 내용</label><textarea class="form-control" id="handoverContent" rows="3" placeholder="이관할 업무나 건의할 내용을 적어주세요"></textarea></div>
             </div>
 
-            <!-- 📋 업무지시 폼 -->
             <div id="form-task" class="dynamic-form">
                 <div class="form-group">
                     <label>👤 지시 대상자 (누구에게 지시하시겠습니까?)</label>
@@ -248,8 +240,12 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const messaging = firebase.messaging();
         
-        const MASTER_PIN = "1234";
+        // 🔑 1단계에서 복사한 웹 푸시 인증서 키(VAPID Key)를 아래에 넣어주세요
+        const VAPID_KEY = "BOZujBKv3B4EAQ6GOBTZzanhhmU52zT66iAA5pdOeXwHVkM_RBni83pLqrIJNfGmEH7EheUVSE-aF0Sp4rgZQi0"; 
+        const MASTER_PIN = "0715";
+
         let currentActiveTab = "tab-schedule";
         let allFetchedData = []; 
 
@@ -262,28 +258,43 @@
             const today = new Date().toISOString().split('T')[0];
             const asFirstDateEl = document.getElementById('asFirstDate');
             if (asFirstDateEl) asFirstDateEl.value = today;
+
+            // 푸시 알림 권한 체크 및 배너 표시
+            if ('Notification' in window && Notification.permission !== 'granted') {
+                document.getElementById('pushBanner').style.display = 'block';
+            }
         };
+
+        // 📲 푸시 알림 권한 요청 함수
+        function requestPushPermission() {
+            Notification.requestPermission().then((permission) => {
+                if (permission === 'granted') {
+                    document.getElementById('pushBanner').style.display = 'none';
+                    messaging.getToken({ vapidKey: VAPID_KEY }).then((currentToken) => {
+                        if (currentToken) {
+                            showToast("🔔 카카오톡 알림처럼 실시간 푸시 알림이 설정되었습니다!");
+                        }
+                    });
+                } else {
+                    alert("알림 권한이 거부되었습니다. 스마트폰 브라우저 설정에서 알림을 허용해주세요.");
+                }
+            });
+        }
 
         function showToast(message) {
             const toast = document.getElementById("toastNotification");
             if (toast) {
                 toast.innerText = message;
                 toast.classList.add("show");
-                setTimeout(() => {
-                    toast.classList.remove("show");
-                }, 3500);
+                setTimeout(() => { toast.classList.remove("show"); }, 3500);
             }
         }
 
         function checkMasterSelected() {
             const selectedVal = document.getElementById('managerNameSelect').value;
             const pinArea = document.getElementById('pinCodeArea');
-            if (selectedVal.includes("김만식")) {
-                pinArea.style.display = "block";
-            } else {
-                pinArea.style.display = "none";
-                document.getElementById('masterPinInput').value = "";
-            }
+            if (selectedVal.includes("김만식")) pinArea.style.display = "block";
+            else { pinArea.style.display = "none"; document.getElementById('masterPinInput').value = ""; }
         }
 
         function saveManagerName() {
@@ -292,9 +303,7 @@
             
             if (selectedName.includes("김만식")) {
                 const inputPin = document.getElementById('masterPinInput').value;
-                if (inputPin !== MASTER_PIN) {
-                    return alert("🔒 마스터 비밀번호가 올바르지 않습니다!");
-                }
+                if (inputPin !== MASTER_PIN) return alert("🔒 마스터 비밀번호가 올바르지 않습니다!");
                 selectedName = "김만식";
             }
 
@@ -410,7 +419,6 @@
                 }
             }
             else {
-                // 📋 업무지시 저장
                 const target = document.getElementById('taskTarget').value;
                 const content = document.getElementById('taskContent').value;
                 
@@ -420,7 +428,7 @@
                 savePayload.category = "업무지시";
                 savePayload.taskTarget = target;
                 savePayload.text = content;
-                savePayload.taskStatus = "미확인"; // 기본 미확인 상태
+                savePayload.taskStatus = "미확인";
             }
 
             try {
@@ -454,7 +462,6 @@
             }
         }
 
-        // 📋 업무 지시 확인 완료 처리 함수
         async function completeTask(docId) {
             const currentMyName = localStorage.getItem("gnManagerName") || "담당자";
             if(confirm(`'${currentMyName}' 매니저 이름으로 업무 확인을 완료하시겠습니까?`)) {
@@ -464,9 +471,7 @@
                         confirmedBy: currentMyName
                     });
                     showToast("👍 업무 지시 확인이 완료되었습니다.");
-                } catch(e) {
-                    alert("확인 처리 중 오류가 발생했습니다.");
-                }
+                } catch(e) { alert("확인 처리 중 오류가 발생했습니다."); }
             }
         }
 
@@ -499,7 +504,6 @@
             } catch (e) { alert("등록 실패!"); }
         }
 
-        // DB 실시간 수신
         db.collection("gn_dashboard_data").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
             allFetchedData = []; 
             snapshot.forEach((doc) => { allFetchedData.push({ id: doc.id, ...doc.data() }); });
@@ -648,7 +652,6 @@
                     }
                 }
                 else if(data.category === "업무지시") {
-                    // 📋 업무지시 렌더링
                     let taskBadge = (data.taskStatus === "확인완료") ? `<span class="badge green">🟢 확인완료</span>` : `<span class="badge red">🔴 미확인</span>`;
                     let displayTarget = (data.taskTarget === "김만식") ? "👑 김만식" : data.taskTarget;
                     
