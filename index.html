@@ -4,12 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>광주센터 업무 대시보드</title>
+    
+    <!-- Firebase SDK (글로벌 버전) -->
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background-color: #f0f2f5; color: #333; padding-bottom: 70px; }
         header { background-color: #2c3e50; color: white; padding: 15px; text-align: center; font-size: 18px; font-weight: bold; position: sticky; top: 0; z-index: 100; }
         .notice-banner { background-color: #fff3cd; color: #856404; padding: 10px 15px; font-size: 13px; font-weight: bold; border-bottom: 1px solid #ffe8a1; }
         
+        /* 🔔 토스트 알림 메시지 스타일 */
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background-color: #2ecc71;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 9999;
+            opacity: 0;
+            transition: all 0.4s ease;
+            text-align: center;
+        }
+        .toast-notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
         .tab-content { display: none; padding: 15px; }
         .tab-content.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -21,16 +49,20 @@
         .card-title { font-size: 16px; font-weight: bold; }
         .list-item { padding: 15px 0; border-bottom: 1px solid #f0f0f0; display: flex; flex-direction: column; gap: 5px; }
         
+        .badge-warning-3d { background-color: #d63031; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
         .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: white; }
         .badge.blue { background-color: #3498db; }
         .badge.green { background-color: #2ecc71; }
         .badge.orange { background-color: #f39c12; }
         .badge.red { background-color: #e74c3c; }
         .badge.purple { background-color: #8e44ad; } 
+        .badge.navy { background-color: #2c3e50; }
         
         .fab { position: fixed; bottom: 80px; right: 20px; background-color: #e74c3c; color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 10px rgba(231,76,60,0.4); border: none; cursor: pointer; z-index: 100; }
         .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #ddd; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; }
-        .nav-item { flex: 1; text-align: center; color: #7f8c8d; font-size: 13px; font-weight: bold; cursor: pointer; padding: 5px; }
+        .nav-item { flex: 1; text-align: center; color: #7f8c8d; font-size: 12px; font-weight: bold; cursor: pointer; padding: 5px; }
         .nav-item.active { color: #2c3e50; border-bottom: 3px solid #2c3e50; }
         
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: center; }
@@ -46,6 +78,8 @@
         
         .btn-delete { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 12px; margin-left: 10px; font-weight: bold; text-decoration: underline; padding: 5px; }
         .btn-status { background: #333; color: white; border: none; border-radius: 4px; padding: 5px 10px; font-size: 11px; font-weight: bold; cursor: pointer; margin-left: 5px; }
+        .btn-check-task { background: #27ae60; color: white; border: none; border-radius: 4px; padding: 6px 12px; font-size: 12px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        
         .comment-box { background: #f9f9f9; border-radius: 6px; padding: 8px; margin-top: 10px; font-size: 13px; border: 1px solid #eee; }
         .comment-item { border-bottom: 1px dotted #ccc; padding: 4px 0; }
         .comment-item:last-child { border-bottom: none; }
@@ -53,34 +87,46 @@
         
         .dynamic-form { display: none; }
         .dynamic-form.active { display: block; animation: fadeIn 0.3s; }
+        .guide-box { background: #eef2f5; padding: 10px; border-radius: 6px; font-size: 12px; color: #2c3e50; margin-bottom: 12px; border-left: 4px solid #3498db; }
     </style>
 </head>
 <body>
+    <!-- 🔔 토스트 알림 메시지 UI -->
+    <div id="toastNotification" class="toast-notification">✅ 게시글이 성공적으로 등록되었습니다!</div>
+
     <header>🏢 GN서비스 광주센터</header>
-    <div class="notice-banner">🚨 [공지] 연차사용,당일미처리업무이관,난제성AS 반드시 대시보에 공유할것!</div>
+    <div class="notice-banner">🚨 [공지] 접수 후 동일증상 3일 이상 지속되는 난제성 AS는 반드시 등록하여 집중 조치받으세요!</div>
 
     <div style="padding: 15px 15px 0 15px;">
         <input type="text" id="searchInput" class="search-box" placeholder="🔍 매장명, 담당자, 내용 검색..." onkeyup="renderData()">
     </div>
 
+    <!-- 탭 별 컨텐츠 영역 -->
     <div id="tab-schedule" class="tab-content active">
         <div class="card"><div class="card-header"><span class="card-title">🗓️ 일정 현황</span></div><div id="list-schedule"></div></div>
     </div>
     
     <div id="tab-as" class="tab-content">
-        <div class="card"><div class="card-header"><span class="card-title">🛠️ 실시간 AS 특이사항</span></div><div id="list-as"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">🛠️ 실시간 AS 특이사항 (3일+ 난제 집중관리)</span></div><div id="list-as"></div></div>
     </div>
 
     <div id="tab-handover" class="tab-content">
         <div class="card"><div class="card-header"><span class="card-title">🔄 AS업무 이관 및 건의</span></div><div id="list-handover"></div></div>
     </div>
 
+    <!-- 📋 신규 추가: 업무지시 탭 -->
+    <div id="tab-task" class="tab-content">
+        <div class="card"><div class="card-header"><span class="card-title">📋 센터 업무지시 및 전달사항</span></div><div id="list-task"></div></div>
+    </div>
+
     <button class="fab" onclick="openModal()">+</button>
 
+    <!-- 하단 네비게이션 바 (4개 탭) -->
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('tab-schedule', this)">🗓️ 일정</div>
         <div class="nav-item" onclick="switchTab('tab-as', this)">🛠️ AS공유</div>
         <div class="nav-item" onclick="switchTab('tab-handover', this)">🔄 AS이관/건의</div>
+        <div class="nav-item" onclick="switchTab('tab-task', this)">📋 업무지시</div>
     </nav>
 
     <!-- 이름 설정 팝업 -->
@@ -88,9 +134,10 @@
         <div class="modal-content" style="text-align: center;">
             <h3 style="margin-bottom: 10px;">환영합니다!</h3>
             <div class="form-group" style="text-align: left;">
-                <select class="form-control" id="managerNameSelect">
+                <label>이름 선택</label>
+                <select class="form-control" id="managerNameSelect" onchange="checkMasterSelected()">
                     <option value="">-- 매니저 선택 --</option>
-                    <option value="김만식">김만식</option>
+                    <option value="김만식">김만식 (센터장 / 마스터 🔒)</option>
                     <option value="김선준">김선준</option>
                     <option value="이덕섭">이덕섭</option>
                     <option value="배우경">배우경</option>
@@ -102,6 +149,12 @@
                     <option value="정진욱">정진욱</option>
                 </select>
             </div>
+            
+            <div class="form-group" id="pinCodeArea" style="display: none; text-align: left;">
+                <label style="color: #e74c3c;">🔑 마스터 비밀번호 (4자리)</label>
+                <input type="password" id="masterPinInput" class="form-control" maxlength="4" placeholder="비밀번호 입력">
+            </div>
+
             <button class="btn-submit" onclick="saveManagerName()">내 이름 저장하고 시작하기</button>
         </div>
     </div>
@@ -111,6 +164,7 @@
         <div class="modal-content">
             <h3 id="modalTitle" style="margin-bottom: 15px; border-bottom: 2px solid #333; padding-bottom: 10px;">데이터 등록</h3>
             
+            <!-- 일정 폼 -->
             <div id="form-schedule" class="dynamic-form">
                 <div class="form-group"><label>📅 날짜 선택</label><input type="date" class="form-control" id="schedDate"></div>
                 <div class="form-group">
@@ -123,27 +177,24 @@
                     <label>🤝 대체근무자 지정 (연차 필수)</label>
                     <select class="form-control" id="schedSubstitute">
                         <option value="">-- 매니저 선택 --</option>
-                    <option value="김만식">김만식</option>
-                    <option value="김선준">김선준</option>
-                    <option value="이덕섭">이덕섭</option>
-                    <option value="배우경">배우경</option>
-                    <option value="배우길">배우길</option>
-                    <option value="장주원">장주원</option>
-                    <option value="김지석">김지석</option>
-                    <option value="이준수">이준수</option>
-                    <option value="구지후">구지후</option>
-                    <option value="정진욱">정진욱</option>
-                    <option value="미정">미정</option>
+                        <option value="김만식">김만식</option><option value="김선준">김선준</option><option value="이덕섭">이덕섭</option><option value="배우경">배우경</option><option value="배우길">배우길</option><option value="장주원">장주원</option><option value="김지석">김지석</option><option value="이준수">이준수</option><option value="구지후">구지후</option><option value="정진욱">정진욱</option><option value="미정">미정</option>
                     </select>
                 </div>
                 <div class="form-group"><label>비고</label><textarea class="form-control" id="schedContent" rows="2"></textarea></div>
             </div>
 
+            <!-- AS 폼 -->
             <div id="form-as" class="dynamic-form">
+                <div class="guide-box">
+                    📌 <strong>난제성 AS 작성 안내</strong><br>
+                    접수 후 <u>동일 증상이 3일 이상 지속되거나</u> 혼자 해결하기 불가능한 건을 우선 등록하여 팀 기술 지원을 받아보세요.
+                </div>
                 <div class="form-group"><label>🏢 매장명</label><input type="text" class="form-control" id="asStore" placeholder="예: 수완점"></div>
-                <div class="form-group"><label>특이사항 및 조치내역</label><textarea class="form-control" id="asContent" rows="3"></textarea></div>
+                <div class="form-group"><label>📅 최초 AS 접수일</label><input type="date" class="form-control" id="asFirstDate"></div>
+                <div class="form-group"><label>증상 및 조치 내역 (미해결 사유)</label><textarea class="form-control" id="asContent" rows="3" placeholder="어떤 원인으로 조치가 지연되고 있는지 구체적으로 적어주세요"></textarea></div>
             </div>
 
+            <!-- 이관/건의 폼 -->
             <div id="form-handover" class="dynamic-form">
                 <div class="form-group">
                     <label>구분</label>
@@ -157,19 +208,26 @@
                     <select class="form-control" id="handoverTo">
                         <option value="">-- 매니저 선택 --</option>
                         <option value="전체(공통)">전체(공통)</option>
-                    <option value="김만식">김만식</option>
-                    <option value="김선준">김선준</option>
-                    <option value="이덕섭">이덕섭</option>
-                    <option value="배우경">배우경</option>
-                    <option value="배우길">배우길</option>
-                    <option value="장주원">장주원</option>
-                    <option value="김지석">김지석</option>
-                    <option value="이준수">이준수</option>
-                    <option value="구지후">구지후</option>
-                    <option value="정진욱">정진욱</option>
+                        <option value="김만식">김만식</option><option value="김선준">김선준</option><option value="이덕섭">이덕섭</option><option value="배우경">배우경</option><option value="배우길">배우길</option><option value="장주원">장주원</option><option value="김지석">김지석</option><option value="이준수">이준수</option><option value="구지후">구지후</option><option value="정진욱">정진욱</option>
                     </select>
                 </div>
                 <div class="form-group"><label>상세 내용</label><textarea class="form-control" id="handoverContent" rows="3" placeholder="이관할 업무나 건의할 내용을 적어주세요"></textarea></div>
+            </div>
+
+            <!-- 📋 업무지시 폼 -->
+            <div id="form-task" class="dynamic-form">
+                <div class="form-group">
+                    <label>👤 지시 대상자 (누구에게 지시하시겠습니까?)</label>
+                    <select class="form-control" id="taskTarget">
+                        <option value="">-- 매니저 선택 --</option>
+                        <option value="전체(공통)">전체(공통)</option>
+                        <option value="김선준">김선준</option><option value="이덕섭">이덕섭</option><option value="배우경">배우경</option><option value="배우길">배우길</option><option value="장주원">장주원</option><option value="김지석">김지석</option><option value="이준수">이준수</option><option value="구지후">구지후</option><option value="정진욱">정진욱</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>📋 업무 지시 내용</label>
+                    <textarea class="form-control" id="taskContent" rows="3" placeholder="수행해야 할 상세 업무 지시 내용을 입력해주세요"></textarea>
+                </div>
             </div>
 
             <button class="btn-submit" onclick="saveData()">저장하기</button>
@@ -177,42 +235,75 @@
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
-
-        // ★★★ 내 비밀번호로 교체 ★★★
+    <script>
         const firebaseConfig = {
-              apiKey: "AIzaSyCU6QD7Lb0kKdswB_FwZwPsVSEvHjVkoOc",
-  authDomain: "gwgnworkbord.firebaseapp.com",
-  projectId: "gwgnworkbord",
-  storageBucket: "gwgnworkbord.firebasestorage.app",
-  messagingSenderId: "442223729114",
-  appId: "1:442223729114:web:bbb6c00015048158bac8e3",
-  measurementId: "G-3XB7X0RD5B"
+            apiKey: "AIzaSyCU6QD7Lb0kKdswB_FwZwPsVSEvHjVkoOc",
+            authDomain: "gwgnworkbord.firebaseapp.com",
+            projectId: "gwgnworkbord",
+            storageBucket: "gwgnworkbord.firebasestorage.app",
+            messagingSenderId: "442223729114",
+            appId: "1:442223729114:web:bbb6c00015048158bac8e3",
+            measurementId: "G-3XB7X0RD5B"
         };
-        // ★★★ 여기까지 ★★★
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
         
+        const MASTER_PIN = "1234";
         let currentActiveTab = "tab-schedule";
         let allFetchedData = []; 
 
         window.onload = function() {
             const savedName = localStorage.getItem("gnManagerName");
-            if (!savedName) document.getElementById('nameModal').classList.add('active');
+            if (!savedName) {
+                document.getElementById('nameModal').classList.add('active');
+            }
+            
+            const today = new Date().toISOString().split('T')[0];
+            const asFirstDateEl = document.getElementById('asFirstDate');
+            if (asFirstDateEl) asFirstDateEl.value = today;
         };
 
-        window.saveManagerName = function() {
-            const selectedName = document.getElementById('managerNameSelect').value;
+        function showToast(message) {
+            const toast = document.getElementById("toastNotification");
+            if (toast) {
+                toast.innerText = message;
+                toast.classList.add("show");
+                setTimeout(() => {
+                    toast.classList.remove("show");
+                }, 3500);
+            }
+        }
+
+        function checkMasterSelected() {
+            const selectedVal = document.getElementById('managerNameSelect').value;
+            const pinArea = document.getElementById('pinCodeArea');
+            if (selectedVal.includes("김만식")) {
+                pinArea.style.display = "block";
+            } else {
+                pinArea.style.display = "none";
+                document.getElementById('masterPinInput').value = "";
+            }
+        }
+
+        function saveManagerName() {
+            let selectedName = document.getElementById('managerNameSelect').value;
             if (selectedName === "") return alert("이름을 선택해 주세요!");
+            
+            if (selectedName.includes("김만식")) {
+                const inputPin = document.getElementById('masterPinInput').value;
+                if (inputPin !== MASTER_PIN) {
+                    return alert("🔒 마스터 비밀번호가 올바르지 않습니다!");
+                }
+                selectedName = "김만식";
+            }
+
             localStorage.setItem("gnManagerName", selectedName);
             document.getElementById('nameModal').classList.remove('active');
             location.reload();
-        };
+        }
 
-        window.switchTab = function(tabId, element) {
+        function switchTab(tabId, element) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
@@ -220,29 +311,61 @@
             currentActiveTab = tabId; 
         }
 
-        window.toggleSubstitute = function() {
+        function toggleSubstitute() {
             const type = document.getElementById('schedType').value;
             document.getElementById('substituteArea').style.display = (type === "연차") ? "block" : "none";
         }
 
-        window.toggleHandoverFields = function() {
+        function toggleHandoverFields() {
             const type = document.getElementById('handoverType').value;
             document.getElementById('handoverToArea').style.display = (type === "업무이관") ? "block" : "none";
         }
 
-        window.openModal = function() { 
+        function openModal() { 
             document.querySelectorAll('.dynamic-form').forEach(form => form.classList.remove('active'));
-            if(currentActiveTab === "tab-schedule") { document.getElementById('modalTitle').innerText = "📅 일정 등록"; document.getElementById('form-schedule').classList.add('active'); window.toggleSubstitute(); }
-            else if(currentActiveTab === "tab-as") { document.getElementById('modalTitle').innerText = "🛠️ AS 내역 등록"; document.getElementById('form-as').classList.add('active'); }
-            else { document.getElementById('modalTitle').innerText = "🔄 이관/건의 등록"; document.getElementById('form-handover').classList.add('active'); window.toggleHandoverFields(); }
+            if(currentActiveTab === "tab-schedule") { 
+                document.getElementById('modalTitle').innerText = "📅 일정 등록"; 
+                document.getElementById('form-schedule').classList.add('active'); 
+                toggleSubstitute(); 
+            }
+            else if(currentActiveTab === "tab-as") { 
+                document.getElementById('modalTitle').innerText = "🛠️ 난제성 AS 공유"; 
+                document.getElementById('form-as').classList.add('active'); 
+            }
+            else if(currentActiveTab === "tab-handover") { 
+                document.getElementById('modalTitle').innerText = "🔄 이관/건의 등록"; 
+                document.getElementById('form-handover').classList.add('active'); 
+                toggleHandoverFields(); 
+            }
+            else {
+                document.getElementById('modalTitle').innerText = "📋 업무지시 등록"; 
+                document.getElementById('form-task').classList.add('active'); 
+            }
             document.getElementById('inputModal').classList.add('active'); 
         }
 
-        window.closeModal = function() { document.getElementById('inputModal').classList.remove('active'); }
+        function closeModal() { 
+            document.getElementById('inputModal').classList.remove('active'); 
+            document.getElementById('schedDate').value = '';
+            document.getElementById('schedContent').value = '';
+            document.getElementById('asStore').value = '';
+            document.getElementById('asContent').value = '';
+            document.getElementById('handoverContent').value = '';
+            document.getElementById('taskContent').value = '';
+            document.getElementById('schedSubstitute').value = '';
+            document.getElementById('handoverTo').value = '';
+            document.getElementById('taskTarget').value = '';
+            document.getElementById('schedType').value = '연차';
+            document.getElementById('handoverType').value = '업무이관';
+        }
 
-        window.saveData = async function() {
+        async function saveData() {
             const authorName = localStorage.getItem("gnManagerName") || "익명"; 
-            let savePayload = { author: authorName, createdAt: serverTimestamp(), comments: [] }; 
+            let savePayload = { 
+                author: authorName, 
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(), 
+                comments: [] 
+            }; 
 
             if(currentActiveTab === "tab-schedule") {
                 const date = document.getElementById('schedDate').value;
@@ -251,15 +374,25 @@
                 const content = document.getElementById('schedContent').value;
                 if(!date) return alert("날짜를 선택해주세요.");
                 if(type === "연차" && !sub) return alert("대체근무자를 지정해야 합니다.");
-                savePayload.category = "일정"; savePayload.schedDate = date; savePayload.schedType = type; savePayload.schedSubstitute = sub; savePayload.text = content;
+                savePayload.category = "일정"; 
+                savePayload.schedDate = date; 
+                savePayload.schedType = type; 
+                savePayload.schedSubstitute = sub; 
+                savePayload.text = content;
             } 
             else if(currentActiveTab === "tab-as") {
                 const store = document.getElementById('asStore').value;
+                const firstDate = document.getElementById('asFirstDate').value;
                 const content = document.getElementById('asContent').value;
-                if(!store || !content) return alert("입력칸을 모두 채워주세요.");
-                savePayload.category = "AS"; savePayload.storeName = store; savePayload.text = content; savePayload.status = "미해결";
+                if(!store || !content || !firstDate) return alert("매장명, 최초 접수일, 증상을 모두 입력해주세요.");
+                
+                savePayload.category = "AS"; 
+                savePayload.storeName = store; 
+                savePayload.asFirstDate = firstDate; 
+                savePayload.text = content; 
+                savePayload.status = "미해결";
             } 
-            else {
+            else if(currentActiveTab === "tab-handover") {
                 const type = document.getElementById('handoverType').value;
                 const content = document.getElementById('handoverContent').value;
                 const target = document.getElementById('handoverTo').value;
@@ -276,86 +409,138 @@
                     savePayload.handoverStatus = "대기중"; 
                 }
             }
+            else {
+                // 📋 업무지시 저장
+                const target = document.getElementById('taskTarget').value;
+                const content = document.getElementById('taskContent').value;
+                
+                if(!target) return alert("지시 대상자를 선택해주세요.");
+                if(!content) return alert("업무 지시 내용을 입력해주세요.");
+
+                savePayload.category = "업무지시";
+                savePayload.taskTarget = target;
+                savePayload.text = content;
+                savePayload.taskStatus = "미확인"; // 기본 미확인 상태
+            }
 
             try {
-                await addDoc(collection(db, "gn_dashboard_data"), savePayload);
-                document.getElementById('schedDate').value = ''; document.getElementById('schedContent').value = ''; document.getElementById('asStore').value = ''; document.getElementById('asContent').value = ''; document.getElementById('handoverContent').value = ''; document.getElementById('handoverTo').value = '';
-                window.closeModal(); 
-            } catch (e) { alert("저장 실패!"); }
-        };
+                await db.collection("gn_dashboard_data").add(savePayload);
+                closeModal(); 
+                
+                if (currentActiveTab === "tab-task") {
+                    const targetName = document.getElementById('taskTarget').value || "담당자";
+                    showToast(`📢 [${targetName}] 매니저님에게 새 업무 지시가 등록되었습니다!`);
+                } else {
+                    showToast("✅ 게시글이 성공적으로 등록되었습니다!"); 
+                }
+            } catch (e) { 
+                console.error("저장 오류:", e);
+                alert("저장 실패! 인터넷 연결 상태를 확인해주세요."); 
+            }
+        }
 
-        window.deleteData = async function(docId) {
-            if(confirm("정말로 삭제하시겠습니까?")) await deleteDoc(doc(db, "gn_dashboard_data", docId));
-        };
+        async function deleteData(docId) {
+            if(confirm("정말로 삭제하시겠습니까?")) {
+                await db.collection("gn_dashboard_data").doc(docId).delete();
+                showToast("🗑️ 게시글이 삭제되었습니다.");
+            }
+        }
 
-        window.toggleStatus = async function(docId, currentStatus) {
+        async function toggleStatus(docId, currentStatus) {
             const newStatus = (currentStatus === "미해결") ? "해결완료" : "미해결";
             if(confirm(`상태를 '${newStatus}'(으)로 변경하시겠습니까?`)) {
-                await updateDoc(doc(db, "gn_dashboard_data", docId), { status: newStatus });
+                await db.collection("gn_dashboard_data").doc(docId).update({ status: newStatus });
+                showToast(`상태가 '${newStatus}'(으)로 변경되었습니다.`);
             }
-        };
+        }
 
-        window.submitHandoverResult = async function(docId) {
+        // 📋 업무 지시 확인 완료 처리 함수
+        async function completeTask(docId) {
+            const currentMyName = localStorage.getItem("gnManagerName") || "담당자";
+            if(confirm(`'${currentMyName}' 매니저 이름으로 업무 확인을 완료하시겠습니까?`)) {
+                try {
+                    await db.collection("gn_dashboard_data").doc(docId).update({
+                        taskStatus: "확인완료",
+                        confirmedBy: currentMyName
+                    });
+                    showToast("👍 업무 지시 확인이 완료되었습니다.");
+                } catch(e) {
+                    alert("확인 처리 중 오류가 발생했습니다.");
+                }
+            }
+        }
+
+        async function submitHandoverResult(docId) {
             const material = document.getElementById(`mat-${docId}`).value;
             const memo = document.getElementById(`memo-${docId}`).value;
             
             if(confirm("완료 처리하시겠습니까? (저장 후 수정이 불가능합니다)")) {
                 try {
-                    await updateDoc(doc(db, "gn_dashboard_data", docId), {
+                    await db.collection("gn_dashboard_data").doc(docId).update({
                         handoverStatus: "해결완료",
                         usedMaterial: material || "사용 자재 없음",
                         resolutionMemo: memo || "특이사항 없음"
                     });
-                    alert("업무 이관 완료 처리가 되었습니다.");
+                    showToast("✅ 업무 이관 완료 처리가 되었습니다.");
                 } catch(e) { alert("처리 중 오류가 발생했습니다."); }
             }
-        };
+        }
 
-        window.addComment = async function(docId) {
+        async function addComment(docId) {
             const commentInput = document.getElementById(`cmt-${docId}`);
-            if(!commentInput.value) return alert("댓글을 입력해주세요.");
+            if(!commentInput.value) return alert("내용을 입력해주세요.");
             const authorName = localStorage.getItem("gnManagerName") || "익명"; 
             try {
-                await updateDoc(doc(db, "gn_dashboard_data", docId), {
-                    comments: arrayUnion({ author: authorName, text: commentInput.value })
+                await db.collection("gn_dashboard_data").doc(docId).update({
+                    comments: firebase.firestore.FieldValue.arrayUnion({ author: authorName, text: commentInput.value })
                 });
                 commentInput.value = ''; 
-            } catch (e) { alert("댓글 등록 실패!"); }
-        };
+                showToast("💬 댓글 및 추가 내용이 등록되었습니다.");
+            } catch (e) { alert("등록 실패!"); }
+        }
 
-        const q = query(collection(db, "gn_dashboard_data"), orderBy("createdAt", "desc"));
-        onSnapshot(q, (snapshot) => {
+        // DB 실시간 수신
+        db.collection("gn_dashboard_data").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
             allFetchedData = []; 
             snapshot.forEach((doc) => { allFetchedData.push({ id: doc.id, ...doc.data() }); });
             renderData(); 
         });
 
-        window.renderData = function() {
+        function renderData() {
             const listSchedule = document.getElementById('list-schedule');
             const listAs = document.getElementById('list-as');
             const listHandover = document.getElementById('list-handover');
+            const listTask = document.getElementById('list-task');
             
-            listSchedule.innerHTML = ''; listAs.innerHTML = ''; listHandover.innerHTML = '';
+            if (!listSchedule || !listAs || !listHandover || !listTask) return;
+
+            listSchedule.innerHTML = ''; listAs.innerHTML = ''; listHandover.innerHTML = ''; listTask.innerHTML = '';
             
             const currentMyName = localStorage.getItem("gnManagerName");
-            const searchKeyword = document.getElementById('searchInput').value.toLowerCase(); 
+            const isMaster = (currentMyName === "김만식"); 
+            const searchKeyword = (document.getElementById('searchInput').value || '').toLowerCase(); 
+            const todayDate = new Date();
 
             allFetchedData.forEach((data) => {
-                const textToSearch = `${data.author} ${data.assignee || ''} ${data.storeName || ''} ${data.text} ${data.schedType || ''}`.toLowerCase();
+                const textToSearch = `${data.author || ''} ${data.assignee || ''} ${data.taskTarget || ''} ${data.storeName || ''} ${data.text || ''} ${data.schedType || ''}`.toLowerCase();
                 if(searchKeyword && !textToSearch.includes(searchKeyword)) return; 
 
                 const docId = data.id; 
-                let deleteBtnHTML = (data.author === currentMyName) ? `<button class="btn-delete" onclick="deleteData('${docId}')">삭제</button>` : "";
-                
+                let deleteBtnHTML = (isMaster || data.author === currentMyName) ? `<button class="btn-delete" onclick="deleteData('${docId}')">삭제</button>` : "";
+                let displayAuthorName = (data.author === "김만식") ? "👑 김만식" : data.author;
+
                 let commentsHTML = "";
                 if(data.comments && data.comments.length > 0) {
-                    data.comments.forEach(c => { commentsHTML += `<div class="comment-item"><strong>${c.author}</strong>: ${c.text}</div>`; });
+                    data.comments.forEach(c => { 
+                        let cAuthor = (c.author === "김만식") ? "👑 김만식" : c.author;
+                        commentsHTML += `<div class="comment-item"><strong>${cAuthor}</strong>: ${c.text}</div>`; 
+                    });
                 }
                 const commentBoxHTML = `
                     <div class="comment-box">
                         ${commentsHTML}
                         <div class="comment-input-area">
-                            <input type="text" id="cmt-${docId}" class="form-control" style="padding: 6px; font-size: 12px;" placeholder="의견 남기기...">
+                            <input type="text" id="cmt-${docId}" class="form-control" style="padding: 6px; font-size: 12px;" placeholder="추가 전달사항 / 피드백 남기기...">
                             <button class="btn-submit" style="width: 50px; margin: 0; padding: 6px;" onclick="addComment('${docId}')">등록</button>
                         </div>
                     </div>`;
@@ -367,26 +552,42 @@
                         <div class="list-item">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div><span class="badge blue">${data.schedType}</span> <span style="font-weight:bold; font-size:14px; margin-left:5px;">📅 ${data.schedDate}</span></div>
-                                <div><span style="font-size: 12px; color: #888;">👤 ${data.author}</span> ${deleteBtnHTML}</div>
+                                <div><span style="font-size: 12px; color: #888;">👤 ${displayAuthorName}</span> ${deleteBtnHTML}</div>
                             </div>
-                            <div style="font-size: 14px; color: #333; margin-top: 5px;">${data.author} 매니저 ${data.schedType} ${subInfo}</div>
+                            <div style="font-size: 14px; color: #333; margin-top: 5px;">${displayAuthorName} 매니저 ${data.schedType} ${subInfo}</div>
                             ${memo}
                         </div>`;
                 } 
                 else if(data.category === "AS") {
+                    let diffDays = 0;
+                    let warningTag = "";
+                    
+                    if(data.asFirstDate && data.status === "미해결") {
+                        const firstD = new Date(data.asFirstDate);
+                        const diffTime = Math.abs(todayDate - firstD);
+                        diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) - 1;
+                        
+                        if(diffDays >= 3) {
+                            warningTag = `<span class="badge-warning-3d">🚨 ${diffDays}일째 미해결 (난제건)</span>`;
+                        }
+                    }
+
                     let statusBadge = (data.status === "해결완료") ? `<span class="badge green">해결완료</span>` : `<span class="badge red">미해결</span>`;
                     let statusBtn = `<button class="btn-status" onclick="toggleStatus('${docId}', '${data.status || '미해결'}')">상태변경</button>`;
+                    let firstDateInfo = data.asFirstDate ? `<span style="font-size:12px; color:#e67e22; font-weight:bold; margin-left:5px;">(접수일: ${data.asFirstDate})</span>` : "";
+
                     listAs.innerHTML += `
                         <div class="list-item">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>${statusBadge} <span style="font-weight:bold; font-size:14px; margin-left:5px;">🏢 ${data.storeName}</span> ${statusBtn}</div>
-                                <div><span style="font-size: 12px; color: #888;">👤 ${data.author}</span> ${deleteBtnHTML}</div>
+                                <div>${statusBadge} ${warningTag} <span style="font-weight:bold; font-size:14px; margin-left:5px;">🏢 ${data.storeName}</span> ${statusBtn}</div>
+                                <div><span style="font-size: 12px; color: #888;">👤 ${displayAuthorName}</span> ${deleteBtnHTML}</div>
                             </div>
-                            <div style="font-size: 14px; color: #333; margin-top: 5px;">${data.text}</div>
+                            <div style="font-size: 12px; color: #666; margin-top: 3px;">${firstDateInfo}</div>
+                            <div style="font-size: 14px; color: #333; margin-top: 5px; font-weight:bold;">${data.text}</div>
                             ${commentBoxHTML}
                         </div>`;
                 } 
-                else {
+                else if(data.category === "이관") {
                     if(data.handoverType === "업무이관") {
                         let statusBadge = (data.handoverStatus === "해결완료") ? `<span class="badge green">해결완료</span>` : `<span class="badge red">대기중</span>`;
                         let resolveArea = "";
@@ -405,7 +606,7 @@
                                     <button class="btn-status" style="background:#2980b9;" onclick="document.getElementById('resolve-${docId}').style.display='block'">+ 처리결과 등록</button>
                                 </div>
                                 <div id="resolve-${docId}" style="display:none; background:#ecf0f1; padding:10px; border-radius:6px; margin-top:10px;">
-                                    <label style="font-size:12px; font-weight:bold; color:#333;">🛠️ 사용 자재 입력</label>
+                                    <label style="font-size:12px; font-weight:bold; color:#333;">🛠 사용 자재 입력</label>
                                     <input type="text" id="mat-${docId}" class="form-control" placeholder="예: 램프 1개, 케이블 교체 (없으면 빈칸)" style="margin-bottom:8px; padding:8px; font-size:13px;">
                                     
                                     <label style="font-size:12px; font-weight:bold; color:#333;">📝 기타 전달/조치사항</label>
@@ -419,14 +620,16 @@
                             `;
                         }
 
+                        let displayAssignee = (data.assignee === "김만식") ? "👑 김만식" : data.assignee;
+
                         listHandover.innerHTML += `
                             <div class="list-item">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <div><span class="badge purple">업무이관</span> ${statusBadge}</div>
-                                    <div><span style="font-size: 12px; color: #888;">👤 ${data.author}</span> ${deleteBtnHTML}</div>
+                                    <div><span style="font-size: 12px; color: #888;">👤 ${displayAuthorName}</span> ${deleteBtnHTML}</div>
                                 </div>
                                 <div style="font-size: 13px; font-weight: bold; color: #8e44ad; margin-top: 8px; padding:5px; background:#f9ebff; border-radius:4px; display:inline-block;">
-                                    전달: ${data.author} ➔ 인수: ${data.assignee}
+                                    전달: ${displayAuthorName} ➔ 인수: ${displayAssignee}
                                 </div>
                                 <div style="font-size: 14px; color: #333; margin-top: 8px;">${data.text}</div>
                                 ${resolveArea}
@@ -437,18 +640,45 @@
                             <div class="list-item">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <span class="badge orange" style="font-size:13px; padding:4px 10px;">💡 건의사항</span>
-                                    <div><span style="font-size: 12px; color: #888;">👤 ${data.author}</span> ${deleteBtnHTML}</div>
+                                    <div><span style="font-size: 12px; color: #888;">👤 ${displayAuthorName}</span> ${deleteBtnHTML}</div>
                                 </div>
                                 <div style="font-size: 14px; color: #333; margin-top: 8px; font-weight:bold;">${data.text}</div>
                                 ${commentBoxHTML}
                             </div>`;
                     }
                 }
+                else if(data.category === "업무지시") {
+                    // 📋 업무지시 렌더링
+                    let taskBadge = (data.taskStatus === "확인완료") ? `<span class="badge green">🟢 확인완료</span>` : `<span class="badge red">🔴 미확인</span>`;
+                    let displayTarget = (data.taskTarget === "김만식") ? "👑 김만식" : data.taskTarget;
+                    
+                    let confirmBtnHTML = "";
+                    if (data.taskStatus !== "확인완료") {
+                        confirmBtnHTML = `<div><button class="btn-check-task" onclick="completeTask('${docId}')">✅ 업무 확인 완료 처리</button></div>`;
+                    } else {
+                        confirmBtnHTML = `<div style="font-size:12px; color:#27ae60; font-weight:bold; margin-top:5px;">👍 ${data.confirmedBy || '담당자'} 매니저 확인 완료</div>`;
+                    }
+
+                    listTask.innerHTML += `
+                        <div class="list-item">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div><span class="badge navy">📋 업무지시</span> ${taskBadge}</div>
+                                <div><span style="font-size: 12px; color: #888;">지시자: ${displayAuthorName}</span> ${deleteBtnHTML}</div>
+                            </div>
+                            <div style="font-size: 13px; font-weight: bold; color: #2c3e50; margin-top: 8px; padding:5px; background:#ebf5fb; border-radius:4px; display:inline-block;">
+                                🎯 지시 대상: ${displayTarget} 매니저
+                            </div>
+                            <div style="font-size: 14px; color: #333; margin-top: 8px; font-weight:bold; line-height:1.4;">${data.text}</div>
+                            ${confirmBtnHTML}
+                            ${commentBoxHTML}
+                        </div>`;
+                }
             });
 
             if(listSchedule.innerHTML === '') listSchedule.innerHTML = '<div class="empty-msg">내용이 없습니다.</div>';
             if(listAs.innerHTML === '') listAs.innerHTML = '<div class="empty-msg">내용이 없습니다.</div>';
             if(listHandover.innerHTML === '') listHandover.innerHTML = '<div class="empty-msg">내용이 없습니다.</div>';
+            if(listTask.innerHTML === '') listTask.innerHTML = '<div class="empty-msg">등록된 업무 지시가 없습니다.</div>';
         }
     </script>
 </body>
